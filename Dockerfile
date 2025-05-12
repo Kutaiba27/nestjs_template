@@ -23,6 +23,8 @@ COPY package.json yarn.lock ./
 
 RUN yarn install
 
+RUN yarn add -D dotenv-cli
+
 COPY . .
 
 COPY --from=builder /app/dist ./dist
@@ -44,6 +46,8 @@ RUN corepack enable
 COPY package.json yarn.lock ./
 
 RUN yarn install --production
+
+RUN yarn add -D dotenv-cli
 
 COPY --from=builder /app/dist ./dist
 

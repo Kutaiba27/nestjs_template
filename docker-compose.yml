@@ -18,12 +18,12 @@ services:
 
     mongodb:
       image: mongo:8.0.9
-      container_name: silla_link_mongodb
+      container_name: template_mongodb
       restart: always
       ports: 
         - "27027:27017"
       environment:
-        MONGO_INITDB_DATABASE: silla_link
+        MONGO_INITDB_DATABASE: template
       command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
       volumes:
         - mongodata:/data/db
@@ -49,7 +49,7 @@ services:
         - app-network
     redis:
       image: redis:7.2
-      container_name: silla_link_redis
+      container_name: template_redis
       restart: always
       ports:
         - "6389:6379"

@@ -1,4 +1,4 @@
-import { RedisKeys } from '@Common/redis.constant';
+import { RedisKeys } from '../../../common/redis.constant';
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import {IRefreshToken} from "@Package/auth";
 
