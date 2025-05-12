@@ -9,7 +9,7 @@ services:
     env_file:
       - ./development.env
     volumes:
-      - .:/app
+      - .:/app:ro
       - /app/node_modules
     depends_on:
       mongodb:

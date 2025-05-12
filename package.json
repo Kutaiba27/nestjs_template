@@ -10,15 +10,16 @@
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "NODE_ENV=development dotenv -e development.env -- nest start --watch",
+    "start:stag": "NODE_ENV=staging dotenv -e staging.env node dist/main",
+    "start:prod": "NODE_ENV=production dotenv -e production.env node dist/main",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "seed": "cd seeders && NODE_ENV=development yarn start"
+    "seed": "cd seeders && yarn start"
   },
   "dependencies": {
     "@nestjs/cache-manager": "^3.0.1",
