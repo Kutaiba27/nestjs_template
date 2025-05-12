@@ -4,7 +4,7 @@ import { FileUploadService } from './file-upload.service';
 import { MediaPath } from '../types/media-path.enum';
 import { ResponseInterceptor } from '@Package/api/interceptors';
 import { AppError } from '@Package/error';
-import { ErrorCode } from '@Common/error';
+import { ErrorCode } from '../../../common/error';
 
 @UseInterceptors(ResponseInterceptor)
 @Controller('upload')
