@@ -8,8 +8,6 @@ export const Headers = createParamDecorator(
     request.headers.languageKey =
       request.headers["accept-language"] || serverConfig.defaultLanguage;
     request.headers.priceKey = serverConfig.defaultPrice;
-    // request.headers.priceKey =
-    //   request.headers?.pricekey ||  serverConfig.defaultPrice;
     return request.headers;
   },
 );
