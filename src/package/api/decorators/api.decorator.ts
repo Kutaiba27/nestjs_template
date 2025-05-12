@@ -1,10 +1,11 @@
 
-import { createParamDecorator, ExecutionContext, applyDecorators, PipeTransform, Type } from '@nestjs/common';
+import { createParamDecorator, ExecutionContext } from "@nestjs/common";
 
-const Post = <T>(ValidationClass: Type<T>) => {
-  return createParamDecorator((data: unknown, context: ExecutionContext) => {
-    const validationInstance = new ValidationClass();
-    return validationInstance;
-  })();
-};
-const Postd = applyDecorators()
+
+export const Headers = createParamDecorator(
+  (data: unknown, ctx: ExecutionContext) => {
+    const request = ctx.switchToHttp().getRequest();
+    request.headers.languageKey = request.headers["accept-language"] ;
+    return request.headers;
+  },
+);

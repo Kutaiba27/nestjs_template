@@ -1,0 +1,20 @@
+services:
+  app:
+    container_name: template_app
+    build:
+      context: .
+      target: development
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./development.env
+    volumes:
+      - .:/app:ro
+      - /app/node_modules
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app-network

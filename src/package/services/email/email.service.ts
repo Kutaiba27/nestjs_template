@@ -2,20 +2,15 @@
 import { Injectable } from '@nestjs/common';
 import  * as nodemailer from 'nodemailer';
 import {EnvironmentService} from "@Package/config";
-import {ConfigService} from "@nestjs/config";
 import {AppError} from "@Package/error";
-import {CodeErrors} from "@Modules/shared";
 import { EmailTemplateService } from './template.service';
+import {ErrorCode} from "../../../common/error/error-code";
 
 @Injectable()
 export class MailService {
     private readonly emailTemplateService: EmailTemplateService = new EmailTemplateService();
     private transporter: nodemailer.Transporter;
     constructor(private readonly env: EnvironmentService) {
-        console.log(env.get("mail.host"))
-        console.log(env.get("mail.port"))
-        console.log(env.get("mail.user"))
-        console.log(env.get("mail.password"))
         this.transporter = nodemailer.createTransport({
             host: env.get("mail.host"),
             port: Number(env.get("mail.port")) ,
@@ -40,7 +35,7 @@ export class MailService {
         } catch (e) {
             console.log(e)
             throw new AppError({
-                code: CodeErrors.MAIL_ERROR,
+                code: ErrorCode.MAIL_ERROR,
                 message: `error in send email : ${e.message}`
             })
         }

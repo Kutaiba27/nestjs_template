@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { StrategyConstant } from '@Package/auth/passport/strategy/strategy.constant';
 import { EnvironmentService } from '@Package/config';
+import {StrategyConstant} from "@Package/auth/passport/strategy/strategy.constant";
 
 @Injectable()
 export class JWTStrategy extends PassportStrategy(Strategy, StrategyConstant.jwt) {
@@ -10,7 +10,7 @@ export class JWTStrategy extends PassportStrategy(Strategy, StrategyConstant.jwt
   constructor(
     private readonly environmentService: EnvironmentService,
   ) {
-    const secretKey = environmentService.get('jwt.jwtAccessToken');
+    const secretKey = environmentService.get('jwt.jwtAccessSecret');
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -21,7 +21,6 @@ export class JWTStrategy extends PassportStrategy(Strategy, StrategyConstant.jwt
   }
 
   validate(req: Request, payload: any) {
-    console.log("payload :",payload);
     return payload
   }
 
