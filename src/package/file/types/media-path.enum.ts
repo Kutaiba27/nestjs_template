@@ -1,7 +1,5 @@
 export enum MediaPath {
-    IMAGE="image"
-}
-
-export enum ImagePath {
-    PROJECT="project"
+    IMAGE="image",
+    VIDEO="video",
+    PDF="pdf"
 }

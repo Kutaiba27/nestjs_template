@@ -36,7 +36,11 @@ export enum ErrorCode {
   MAIL_ERROR =  60001,
 
 //  validation
-  VALIDATION_ERROR = 70000
+  VALIDATION_ERROR = 70000,
+
+// file
+  FILE_NOT_UPLOADED=80000
+
 
 
 }
