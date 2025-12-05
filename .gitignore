@@ -3,6 +3,7 @@
 /node_modules
 /build
 /tmp
+/seeders/dist
 
 # Logs
 logs
