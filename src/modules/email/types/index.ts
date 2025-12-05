@@ -1,0 +1,1 @@
+export * from "./queue-email-event.type"

@@ -1,0 +1,20 @@
+services:
+  app:
+    container_name: apostrophe-task_development
+    build:
+      context: .
+      target: development
+    ports:
+      - "6500:5000"
+    env_file:
+      - ./.env
+    volumes:
+      - .:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    networks:
+      - apostrophe-task
+

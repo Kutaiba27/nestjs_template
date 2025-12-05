@@ -1,0 +1,35 @@
+services:
+  app:
+    container_name: apostrophe-task_app_staging
+    build:
+      context: .
+      target: staging
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./.env
+    restart: always
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    networks:
+      - apostrophe-task
+
+  mongodb:
+    env_file:
+      - path: ./.env
+        required: true
+    environment:
+      MONGO_INITDB_DATABASE: "${MONGODB_NAME}"
+      MONGO_INITDB_ROOT_USERNAME: "${MONGODB_USERNAME}"
+      MONGO_INITDB_ROOT_PASSWORD: "${MONGODB_PASSWORD}"
+    healthcheck:
+      test: ["CMD", "mongosh", "--username", "${MONGODB_USERNAME}", "--password", "${MONGODB_PASSWORD}", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping').ok"]
+
+  mongo-init:
+    env_file:
+      - path: ./.env
+        required: true
+    entrypoint: [ "mongosh", "--host", "mongodb:27017", "--username", "${MONGODB_USERNAME}", "--password", "${MONGODB_PASSWORD}", "--authenticationDatabase", "admin", "--eval", "rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'mongodb:27017'}]})" ]

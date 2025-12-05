@@ -1,0 +1,73 @@
+services:
+    app:
+      build: .
+      container_name: apostrophe-task-app
+      ports:
+        - "5000:3330"
+      env_file:
+        - path: ./.env
+          required: true
+      depends_on:
+        redis:
+          condition: service_healthy
+      networks:
+        - apostrophe-task
+
+    redis:
+      image: redis:8.2.0-alpine
+      container_name: apostrophe-task-redis
+      restart: always
+      ports:
+        - "6389:6379"
+      volumes:
+        - redisdata:/data
+      command: redis-server --appendonly yes
+      networks:
+        - apostrophe-task
+      healthcheck:
+        test: ["CMD", "redis-cli", "ping"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+
+    mongodb:
+      image: mongo:8.0.12
+      container_name: apostrophe-task-mongodb
+      restart: always
+      ports:
+        - "27027:27017"
+      environment:
+        MONGO_INITDB_DATABASE: apostrophe-task
+      command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
+      volumes:
+        - mongodbdata:/data/db
+        - mongo1_config:/data/configdb
+      networks:
+        - apostrophe-task
+      healthcheck:
+        test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping').ok"]
+        interval: 10s
+        timeout: 10s
+        retries: 5
+        start_period: 30s
+
+    mongo-init:
+      image: mongo:8.0.12
+      container_name: apostrophe-task-mongo-init
+      depends_on:
+        mongodb:
+          condition: service_healthy
+      restart: "no"
+      entrypoint: [ "mongosh", "--host", "mongodb:27017", "--eval", "rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'mongodb:27017'}]})" ]
+      networks:
+        - apostrophe-task
+
+networks:
+  apostrophe-task:
+    driver: bridge
+
+
+volumes:
+  redisdata:
+  mongodbdata:
+  mongo1_config:
