@@ -51,10 +51,10 @@ export function GetAccountResponseSchema(account: Account): GetAccountResponse {
     return {
         id: account.id,
         email: account.email,
-        firstName: account.firstName,
-        lastName: account.lastName,
-        isActive: account.isActive,
-        isVerified: account.isVerified,
+        firstName: account.firstName ?? '',
+        lastName: account.lastName ?? '',
+        isActive: account.isActive ?? true,
+        isVerified: account.isVerified ?? false,
         accountRole: account.accountRole,
     }
 }

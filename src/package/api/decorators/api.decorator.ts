@@ -35,7 +35,7 @@ export function PostMethod(options: {
   path: string;
   responseType?: Type<any>;
 }) {
-  const { path, responseType = null } = options;
+  const { path, responseType = undefined } = options;
   return applyDecorators(
     ApiResponse({
       type: responseType,
@@ -61,7 +61,7 @@ export function PutMethod(options: {
   path: string;
   responseType?: Type<any>;
 }) {
-  const { path, responseType = null } = options;
+  const { path, responseType = undefined } = options;
   return applyDecorators(
     ApiResponse({
       type: responseType

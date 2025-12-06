@@ -50,10 +50,7 @@ export class MailService {
     }
 
     async sendSingInOTP(to: string, otp?: string) {
-        let userOtp = otp
-        if (!otp) {
-            userOtp = generateOTP()
-        }
+        const userOtp = otp ?? generateOTP();
         const html = await this.emailTemplateService.getSigninTemplate(userOtp);
         return await this.sendMail(to, "OTP for verification", html);
     }

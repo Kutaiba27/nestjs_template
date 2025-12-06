@@ -33,7 +33,7 @@ export class AuthWebControllerBase {
 
     @PostMethod({
         path: "forgot-password",
-        responseType: null
+        responseType: undefined
     })
     async forgotPassword(@Body() forgotPasswordRequestDto: ForgotPasswordRequestDto): Promise<void> {
         return this.authWebService.forgotPassword(forgotPasswordRequestDto);
@@ -60,7 +60,7 @@ export class AuthWebControllerExtension {
 
     @PostMethod({
         path: "resend-otp",
-        responseType: null
+        responseType: undefined
     })
     async resendOTP(@Account() account: AccountPayload): Promise<void> {
         return this.authWebService.resendOTP(account.email);
@@ -68,7 +68,7 @@ export class AuthWebControllerExtension {
 
     @PostMethod({
         path: "reset-password",
-        responseType: null
+        responseType: undefined
     })
     async resetPassword(@Body() resetPasswordRequestDto: ResetPasswordRequestDto, @Account() account: AccountPayload): Promise<void> {
         return this.authWebService.resetPassword(resetPasswordRequestDto, account);
@@ -76,7 +76,7 @@ export class AuthWebControllerExtension {
 
     @PostMethod({
         path: "logout",
-        responseType: null
+        responseType: undefined
     })
     async logout(@Account() account: AccountPayload): Promise<void> {
         return this.authWebService.logout(account);

@@ -29,13 +29,13 @@ export class AccountService implements IAccountService {
             filter: {
                 email: email,   
             },
-            error: throwError ? this.AccountError.error(AdminErrorCode.ACCOUNT.ACCOUNT_NOT_FOUND) : null,
+            error: throwError ? this.AccountError.error(AdminErrorCode.ACCOUNT.ACCOUNT_NOT_FOUND) : undefined,
         });
     }
 
     async create(account: Account, options?: {session?:ClientSession}): Promise<Account> {
         const id = generateUUIDV7()
-        return this.accountRepository.create({ doc: { ...account, id }, options: {session: options.session} });
+        return this.accountRepository.create({ doc: { ...account, id }, options: {session: options?.session} });
     }
 
 }

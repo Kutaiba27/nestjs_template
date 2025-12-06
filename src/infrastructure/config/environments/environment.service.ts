@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 export const getCurrentEnv = ():EnumEnvironment=>{
-  const env = process.env.NODE_ENV
+  const env = process.env.NODE_ENV ?? ''
   if(!Object.values<string>(EnumEnvironment).includes(env)){
     throw new Error("environment must be in ['development','production','local','test']")
   }
@@ -31,7 +31,7 @@ export type LeafTypes<T, S extends string> = S extends `${infer T1}.${infer T2}`
 export class EnvironmentService {
   constructor(private configService: ConfigService) {
   }
-    public get<T extends Leaves<IEnv>>(path: T, insteadValue?: LeafTypes<IEnv, T>): LeafTypes<IEnv, T> {
-      return this.configService.get(path) ?? insteadValue;
+    public get<T extends Leaves<IEnv> & string>(path: T, insteadValue?: LeafTypes<IEnv, T>): LeafTypes<IEnv, T> {
+      return this.configService.get(path) ?? insteadValue as LeafTypes<IEnv, T>;
   }
 }

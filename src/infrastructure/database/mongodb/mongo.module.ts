@@ -9,11 +9,11 @@ import { EnvironmentService } from '@Infrastructure/config';
         MongooseModule.forRootAsync({
             inject: [EnvironmentService],
             useFactory: async (env: EnvironmentService)=> {
-                const host: string = env.get('mongodb.host');
-                const port: number = env.get('mongodb.port');
-                const username: string = env.get('mongodb.username');
-                const password: string = env.get('mongodb.password');
-                const database: string = env.get('mongodb.name');
+                const host = env.get('mongodb.host') ?? 'localhost';
+                const port = env.get('mongodb.port') ?? 27017;
+                const username = env.get('mongodb.username') ?? '';
+                const password = env.get('mongodb.password') ?? '';
+                const database = env.get('mongodb.name') ?? 'app';
                 const uri = username && password
                     ? `mongodb://${username}:${password}@${host}:${port}/${database}?authSource=admin&replicaSet=rs0`
                     : `mongodb://${host}:${port}/${database}`;

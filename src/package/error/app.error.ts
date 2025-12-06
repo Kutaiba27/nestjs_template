@@ -8,8 +8,8 @@ export class AppError extends Error implements IError {
   constructor(error: IError, statusCode: number = 400) {
     super(error.message as string);
     this.code = error.code;
-    this.errorType = error.errorType;
-    this.statusCode = this.statusCode
+    this.errorType = error.errorType ?? 'AppError';
+    this.statusCode = statusCode;
     Object.setPrototypeOf(this, AppError.prototype);
     Error.captureStackTrace(this, this.constructor);
   }

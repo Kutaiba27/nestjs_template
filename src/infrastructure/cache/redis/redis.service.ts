@@ -112,6 +112,7 @@ export class RedisService implements OnModuleInit,OnModuleDestroy,ICacheService 
 
     async hget(key: string, field: string): Promise<any> {
         const val = await this.redis.hget(key, field);
+        if (val === null) return null;
         try {
             return JSON.parse(val);
         } catch {

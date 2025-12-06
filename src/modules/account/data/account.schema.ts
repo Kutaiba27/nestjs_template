@@ -29,4 +29,3 @@ export class Account extends IBaseEntity{
 export const AccountSchema = SchemaFactory.createForClass(Account);
 
 AccountSchema.index({ email: 1 }, { unique: true });
-AccountSchema.index({ phoneNumber: 1 }, { unique: true });

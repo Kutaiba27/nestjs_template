@@ -1,8 +1,8 @@
-import { JwtService } from "@nestjs/jwt";
+import { JwtService, JwtSignOptions } from "@nestjs/jwt";
 import { Injectable } from "@nestjs/common";
 import { Connection } from "mongoose";
 
-import { AccountRole, IAccountService } from "@Modules/account";
+import { Account, AccountRole, IAccountService } from "@Modules/account";
 import { IAuthWebService } from "../behavior";
 import { LoginResponseDto, SignUpWebResponseDto, VerifyOTPResponseDto } from "../api/dto/response";
 import { ForgotPasswordRequestDto, LoginRequestDto, ResetPasswordRequestDto, SignUpWebRequestDto, VerifyOTPRequestDto } from "../api/dto/request";
@@ -14,7 +14,7 @@ import { EnvironmentService } from "@Infrastructure/config";
 import { EmailQueueService } from "@Modules/email/services/email-queue.service";
 import { InjectConnection } from "@nestjs/mongoose";
 import { generateOTP } from "@Package/utilities";
-import { RedisKeys } from "@Common/cache/redis-key.constant";
+import { RedisKeys, RedisTTL } from "@Common/cache";
 
 @Injectable()
 export class AuthWebService implements IAuthWebService {
@@ -27,36 +27,57 @@ export class AuthWebService implements IAuthWebService {
         private readonly emailQueueService: EmailQueueService,
         @InjectConnection() private readonly connection: Connection
     ) {}
+
+    /**
+     * Generate JWT token and cache it
+     */
+    private async generateAndCacheToken(payload: AccountPayload): Promise<string> {
+        const expiresIn = this.environmentService.get("jwt.jwtExpiredAccess");
+        const token = this.jwtService.sign(
+            { ...payload },
+            { expiresIn } as JwtSignOptions
+        );
+        await this.cacheService.set({
+            key: payload.id,
+            value: token,
+            ttl: RedisTTL.SESSION_TOKEN
+        });
+        return token;
+    }
+
+    /**
+     * Build account payload from account entity
+     */
+    private buildAccountPayload(account: Account, overrides?: Partial<AccountPayload>): AccountPayload {
+        return {
+            id: account.id,
+            email: account.email,
+            accountRole: account.accountRole,
+            isVerified: account.isVerified ?? false,
+            isActive: account.isActive ?? true,
+            ...overrides
+        };
+    }
+
     async login(loginRequestDto: LoginRequestDto): Promise<LoginResponseDto> {
         const account = await this.accountService.findByEmail(loginRequestDto.email)
         if (!account) {
             throw this.AuthWebServiceError.error(ClientSideErrorCode.AUTH.INVALID_CREDENTIALS)
         }
 
-        const isPasswordValid = await HashService.comparePassword(loginRequestDto.password, account.password)
+        const isPasswordValid = await HashService.comparePassword(loginRequestDto.password, account.password ?? '')
         if (!isPasswordValid) {
             throw this.AuthWebServiceError.error(ClientSideErrorCode.AUTH.INVALID_CREDENTIALS)
         }
-        const tokenPayload: AccountPayload = {
-            id: account.id,
-            email: account.email,
-            accountRole: account.accountRole,
-            isVerified: account.isVerified,
-            isActive: account.isActive
-        }
-        const token = this.jwtService.sign<AccountPayload>(tokenPayload, {
-            expiresIn: this.environmentService.get("jwt.jwtExpiredAccess") as any
-        });
-        await this.cacheService.set({
-            key: `${account.id}`,
-            value: token,
-            ttl: 10000 * 60 * 5 
-        });
+        
+        const tokenPayload = this.buildAccountPayload(account);
+        const token = await this.generateAndCacheToken(tokenPayload);
+        
         return {
-            token: token,
+            token,
             fullName: `${account.firstName} ${account.lastName}`,
             accountRole: account.accountRole,
-            isVerified: account.isVerified,
+            isVerified: account.isVerified ?? false,
         };
     }
 
@@ -66,72 +87,58 @@ export class AuthWebService implements IAuthWebService {
             throw this.AuthWebServiceError.error(ClientSideErrorCode.ACCOUNT.DUPLICATED_EMAIL)
         }
         const session = await this.connection.startSession()
-        session.startTransaction()
-        const accountData = {
-            email: signUpWebRequestDto.email,
-            password: signUpWebRequestDto.password,
-            firstName: signUpWebRequestDto.firstName,
-            lastName: signUpWebRequestDto.lastName,
-            accountRole: AccountRole.USER,
-        }
+        try {
+            session.startTransaction()
+            const accountData = {
+                email: signUpWebRequestDto.email,
+                password: signUpWebRequestDto.password,
+                firstName: signUpWebRequestDto.firstName,
+                lastName: signUpWebRequestDto.lastName,
+                accountRole: AccountRole.USER,
+            }
 
-        const account = await this.accountService.create(accountData, {session});
-        const tokenPayload: AccountPayload = {
-            id: account.id,
-            email: account.email,
-            accountRole: account.accountRole,
-            isVerified: false,
-            isActive: true
-        };
-        const token = this.jwtService.sign<AccountPayload>(tokenPayload, {
-            expiresIn: this.environmentService.get("jwt.jwtExpiredAccess") as any
-        });
-        await this.cacheService.set({
-            key: `${account.id}`,
-            value: token,
-            ttl: 10000 * 60 * 5 
-        });
-        const otp = generateOTP()
-        this.cacheService.set({
-            key: `${RedisKeys.OTP}:${account.email}`,
-            value: otp,
-            ttl: 10000 * 60 * 5 
-        })
-        await this.emailQueueService.sendSignUpEmail(account.email, otp);
-        await session.commitTransaction()
-        session.endSession()
-        return {
-            token: token,
-            fullName: `${account.firstName} ${account.lastName}`,
-            accountRole: account.accountRole,
-            isVerified: account.isVerified,
-        };
+            const account = await this.accountService.create(accountData, {session});
+            const tokenPayload = this.buildAccountPayload(account, { isVerified: false, isActive: true });
+            const token = await this.generateAndCacheToken(tokenPayload);
+            
+            const otp = generateOTP()
+            await this.cacheService.set({
+                key: `${RedisKeys.OTP}:${account.email}`,
+                value: otp,
+                ttl: RedisTTL.OTP
+            })
+            await this.emailQueueService.sendSignUpEmail(account.email, otp);
+            await session.commitTransaction()
+            return {
+                token,
+                fullName: `${account.firstName} ${account.lastName}`,
+                accountRole: account.accountRole,
+                isVerified: account.isVerified ?? false,
+            };
+        } catch (error) {
+            await session.abortTransaction()
+            throw error
+        } finally {
+            session.endSession()
+        }
     }
 
-    async verifyOTP(verifyOTPRequestDto: VerifyOTPRequestDto, AccountPayload: AccountPayload): Promise<VerifyOTPResponseDto> {
-        const otp = await this.cacheService.get<string>(`${RedisKeys.OTP}:${AccountPayload.email}`)
+    async verifyOTP(verifyOTPRequestDto: VerifyOTPRequestDto, accountPayload: AccountPayload): Promise<VerifyOTPResponseDto> {
+        const otp = await this.cacheService.get<string>(`${RedisKeys.OTP}:${accountPayload.email}`)
         if (!otp) throw this.AuthWebServiceError.error(ClientSideErrorCode.AUTH.EXPIRED_OTP_TOKEN)
         if(otp.toString() !== verifyOTPRequestDto.otp) throw this.AuthWebServiceError.error(ClientSideErrorCode.AUTH.INVALID_OTP)
-        await this.accountService.update(AccountPayload.id, { isVerified: true })
-        await this.cacheService.delete([`${RedisKeys.OTP}:${AccountPayload.email}`])
-        const newAccountTokenPayload: AccountPayload = {
-            id: AccountPayload.id,
-            email: AccountPayload.email,
-            accountRole: AccountPayload.accountRole,
-            isVerified: false,
+        
+        await this.accountService.update(accountPayload.id, { isVerified: true })
+        await this.cacheService.delete([`${RedisKeys.OTP}:${accountPayload.email}`])
+        
+        const newTokenPayload: AccountPayload = {
+            ...accountPayload,
+            isVerified: true,
             isActive: true
         };
-        const newAccountToken = this.jwtService.sign<AccountPayload>(newAccountTokenPayload, {
-            expiresIn: this.environmentService.get("jwt.jwtExpiredAccess") as any
-        });
-        await this.cacheService.set({
-            key: `${AccountPayload.id}`,
-            value: newAccountToken,
-            ttl: 10000 * 60 * 5 
-        });
-        return {
-            token: newAccountToken,
-        };
+        const token = await this.generateAndCacheToken(newTokenPayload);
+        
+        return { token };
     }
 
     async resendOTP(email: string): Promise<void> {
@@ -141,26 +148,25 @@ export class AuthWebService implements IAuthWebService {
         await this.cacheService.set({
             key: `${RedisKeys.OTP}:${email}`,
             value: otp,
-            ttl: 10000 * 60 * 5 
+            ttl: RedisTTL.OTP
         })
         await this.emailQueueService.sendSignUpEmail(email, otp);
     }
 
     async forgotPassword(forgotPasswordRequestDto: ForgotPasswordRequestDto): Promise<void> {
         const account = await this.accountService.findByEmail(forgotPasswordRequestDto.email)
-        const token = this.jwtService.sign<{id: string, email: string, resetPasswordToken: boolean}>({
+        const token = this.jwtService.sign({
             id: account.id,
             email: forgotPasswordRequestDto.email,
             resetPasswordToken: true
         }, {
-            //TODO
             expiresIn: "15m"
         })
         const url = `${this.environmentService.get("app.frontendUrl")}/reset-password?email=${forgotPasswordRequestDto.email}`
         await this.cacheService.set({
             key: `${RedisKeys.FORGOT_PASSWORD}:${forgotPasswordRequestDto.email}`,
             value: token,
-            ttl: 15 * 60 * 1000 // 15 minutes
+            ttl: RedisTTL.FORGOT_PASSWORD
         }) 
         await this.emailQueueService.sendForgotPasswordEmail(forgotPasswordRequestDto.email, url);
     }

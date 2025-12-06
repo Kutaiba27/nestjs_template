@@ -26,15 +26,15 @@ export class AuthAdminService implements IAuthAdminService {
         const account = await this.accountService.findByEmail(loginRequestDto.email)
         if (!account) this.AuthAdminServiceError.throw(AdminErrorCode.AUTH.INVALID_CREDENTIALS)
         if(account.accountRole !== AccountRole.ADMIN) this.AuthAdminServiceError.throw(AdminErrorCode.AUTH.NOT_ADMIN)
-        const isPasswordValid = await HashService.comparePassword(loginRequestDto.password, account.password)
+        const isPasswordValid = await HashService.comparePassword(loginRequestDto.password, account.password ?? '')
         if (!isPasswordValid)  this.AuthAdminServiceError.throw(ClientSideErrorCode.AUTH.INVALID_CREDENTIALS)
         
         const tokenPayload: AccountPayload = {
             id: account.id,
             email: account.email,
             accountRole: account.accountRole,
-            isVerified: account.isVerified,
-            isActive: account.isActive
+            isVerified: account.isVerified ?? false,
+            isActive: account.isActive ?? true
         }
         const token = this.jwtService.sign<AccountPayload>(tokenPayload, {
             expiresIn: this.environmentService.get("jwt.jwtExpiredAccess") as any
@@ -48,7 +48,7 @@ export class AuthAdminService implements IAuthAdminService {
             token: token,
             fullName: `${account.firstName} ${account.lastName}`,
             accountRole: account.accountRole,
-            isVerified: account.isVerified,
+            isVerified: account.isVerified ?? false,
         };
     }
 

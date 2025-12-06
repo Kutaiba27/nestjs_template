@@ -177,7 +177,7 @@ export abstract class BaseMongoRepository<V>
     doc: V[];
     options?: mongoose.InsertManyOptions & { lean: true; };
   }) {
-    return await this.entityModel.insertMany(doc, options) as unknown as VDocument<V>[];
+    return await this.entityModel.insertMany(doc, options ?? { lean: true }) as unknown as VDocument<V>[];
   }
 
 

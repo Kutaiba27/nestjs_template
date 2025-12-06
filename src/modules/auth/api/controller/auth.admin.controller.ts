@@ -26,7 +26,7 @@ export class AuthAdminController {
 
     @PostMethod({
         path: "logout",
-        responseType: null
+        responseType: undefined
     })
     async logout(@Account() account: AccountPayload): Promise<void> {
         return this.authAdminService.logout(account);

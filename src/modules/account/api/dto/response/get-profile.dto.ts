@@ -36,7 +36,7 @@ export function GetProfileResponse(account: Account): GetProfileResponseDto {
     return {
         id: account.id,
         email: account.email,
-        firstName: account.firstName,
-        lastName: account.lastName,
+        firstName: account.firstName ?? '',
+        lastName: account.lastName ?? '',
     }
 }
