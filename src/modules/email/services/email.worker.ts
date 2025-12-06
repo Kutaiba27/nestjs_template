@@ -1,4 +1,5 @@
 import { OnWorkerEvent, Processor, WorkerHost } from "@nestjs/bullmq";
+import { Logger } from "@nestjs/common";
 import { Job } from "bullmq";
 import { QueuesNames } from "@Infrastructure/queue";
 import { MailService } from "./email.service";
@@ -7,13 +8,16 @@ import { QueueEmailEvent } from "../types";
 
 @Processor({ name: QueuesNames.EMAIL })
 export class MailWorker extends WorkerHost {
+    private readonly logger = new Logger(MailWorker.name);
+
     constructor(
         private readonly mailService: MailService,
         private readonly accountService: IAccountService
     ) {
         super()
     }
-    async process(job: Job): Promise<any> {
+
+    async process(job: Job): Promise<void> {
         switch (job.name) {
             case QueueEmailEvent.OTP:
                 await this.mailService.sendSingInOTP(job.data.email, job.data.otp)
@@ -25,23 +29,23 @@ export class MailWorker extends WorkerHost {
     }
 
     @OnWorkerEvent("active")
-    onWorkerActive(job: Job) {
-        console.log("job active now :", job.id)
+    onWorkerActive(job: Job): void {
+        this.logger.log(`Job active: ${job.id}`);
     }
 
     @OnWorkerEvent("failed")
-    async onWorkerFailed(job: Job) {
+    async onWorkerFailed(job: Job): Promise<void> {
         if (job.attemptsMade < 3) {
-            console.log(`Retrying job ${job.id}...`);
+            this.logger.warn(`Retrying job ${job.id}...`);
         } else {
-            console.log(`Job ${job.id} failed after 3 attempts.`);
-            const user = await this.accountService.findByEmail(job.data.email)
-            console.log(user)
+            this.logger.error(`Job ${job.id} failed after 3 attempts`);
+            const user = await this.accountService.findByEmail(job.data.email);
+            this.logger.error(`Failed email for user: ${user?.email}`);
         }
     }
 
     @OnWorkerEvent("completed")
-    onWorkerCompleted(job: Job) {
-        console.log("job completed => id :", job.id)
+    onWorkerCompleted(job: Job): void {
+        this.logger.log(`Job completed: ${job.id}`);
     }
 }

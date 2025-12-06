@@ -2,7 +2,6 @@ import { Body } from "@nestjs/common";
 import { AuthWebController, GetMethod, PutMethod, Account } from "@Package/api";
 import { IAccountWebService } from "@Modules/account/behavior";
 import { AccountPayload } from "@Package/auth";
-import { GetAccountResponse, GetAccountResponseSchema } from "../dto/response/get-account.dto";
 import { UpdateProfileRequestDto } from "../dto/request/update-profile.dto";
 import { ChangePasswordRequestDto } from "../dto/request/change-password.dto";
 import { GetProfileResponse, GetProfileResponseDto } from "../dto/response";
@@ -33,7 +32,7 @@ export class AccountWebController {
         @Body() updateProfileRequestDto: UpdateProfileRequestDto,
         @Account() account: AccountPayload,
     ): Promise<void> {
-        const updatedAccount = await this.accountWebService.update(account.id, {
+        await this.accountWebService.update(account.id, {
             firstName: updateProfileRequestDto.firstName,
             lastName: updateProfileRequestDto.lastName,
         });
@@ -47,6 +46,5 @@ export class AccountWebController {
         @Account() account: AccountPayload,
     ): Promise<void> {
         await this.accountWebService.changePassword(account.id, changePasswordRequestDto.newPassword);
-        return;
     }
 }

@@ -1,63 +1,35 @@
-import { JwtService, JwtSignOptions } from "@nestjs/jwt";
+import { JwtService } from "@nestjs/jwt";
 import { Injectable } from "@nestjs/common";
 import { Connection } from "mongoose";
 
-import { Account, AccountRole, IAccountService } from "@Modules/account";
-import { IAuthWebService } from "../behavior";
+import { AccountRole, IAccountService } from "@Modules/account";
+import { IAuthWebService, ITokenService, IOTPService } from "../behavior";
 import { LoginResponseDto, SignUpWebResponseDto, VerifyOTPResponseDto } from "../api/dto/response";
 import { ForgotPasswordRequestDto, LoginRequestDto, ResetPasswordRequestDto, SignUpWebRequestDto, VerifyOTPRequestDto } from "../api/dto/request";
 import { ErrorServiceFactory } from "@Package/error";
 import { ClientSideErrorCode } from "@Common/error";
-import { AccountPayload, HashService } from "@Package/auth";
+import { AccountPayload, IHashService } from "@Package/auth";
 import { ICacheService } from "@Infrastructure/cache";
 import { EnvironmentService } from "@Infrastructure/config";
 import { EmailQueueService } from "@Modules/email/services/email-queue.service";
 import { InjectConnection } from "@nestjs/mongoose";
-import { generateOTP } from "@Package/utilities";
 import { RedisKeys, RedisTTL } from "@Common/cache";
 
 @Injectable()
 export class AuthWebService implements IAuthWebService {
     private readonly AuthWebServiceError = ErrorServiceFactory.createErrorService(AuthWebService.name)
+    
     constructor(
         private readonly accountService: IAccountService,
         private readonly cacheService: ICacheService,
         private readonly jwtService: JwtService,
         private readonly environmentService: EnvironmentService,
         private readonly emailQueueService: EmailQueueService,
+        private readonly tokenService: ITokenService,
+        private readonly otpService: IOTPService,
+        private readonly hashService: IHashService,
         @InjectConnection() private readonly connection: Connection
     ) {}
-
-    /**
-     * Generate JWT token and cache it
-     */
-    private async generateAndCacheToken(payload: AccountPayload): Promise<string> {
-        const expiresIn = this.environmentService.get("jwt.jwtExpiredAccess");
-        const token = this.jwtService.sign(
-            { ...payload },
-            { expiresIn } as JwtSignOptions
-        );
-        await this.cacheService.set({
-            key: payload.id,
-            value: token,
-            ttl: RedisTTL.SESSION_TOKEN
-        });
-        return token;
-    }
-
-    /**
-     * Build account payload from account entity
-     */
-    private buildAccountPayload(account: Account, overrides?: Partial<AccountPayload>): AccountPayload {
-        return {
-            id: account.id,
-            email: account.email,
-            accountRole: account.accountRole,
-            isVerified: account.isVerified ?? false,
-            isActive: account.isActive ?? true,
-            ...overrides
-        };
-    }
 
     async login(loginRequestDto: LoginRequestDto): Promise<LoginResponseDto> {
         const account = await this.accountService.findByEmail(loginRequestDto.email)
@@ -65,13 +37,13 @@ export class AuthWebService implements IAuthWebService {
             throw this.AuthWebServiceError.error(ClientSideErrorCode.AUTH.INVALID_CREDENTIALS)
         }
 
-        const isPasswordValid = await HashService.comparePassword(loginRequestDto.password, account.password ?? '')
+        const isPasswordValid = await this.hashService.comparePassword(loginRequestDto.password, account.password ?? '')
         if (!isPasswordValid) {
             throw this.AuthWebServiceError.error(ClientSideErrorCode.AUTH.INVALID_CREDENTIALS)
         }
         
-        const tokenPayload = this.buildAccountPayload(account);
-        const token = await this.generateAndCacheToken(tokenPayload);
+        const tokenPayload = this.tokenService.buildPayload(account);
+        const token = await this.tokenService.generateAndCache(tokenPayload);
         
         return {
             token,
@@ -98,15 +70,10 @@ export class AuthWebService implements IAuthWebService {
             }
 
             const account = await this.accountService.create(accountData, {session});
-            const tokenPayload = this.buildAccountPayload(account, { isVerified: false, isActive: true });
-            const token = await this.generateAndCacheToken(tokenPayload);
+            const tokenPayload = this.tokenService.buildPayload(account, { isVerified: false, isActive: true });
+            const token = await this.tokenService.generateAndCache(tokenPayload);
             
-            const otp = generateOTP()
-            await this.cacheService.set({
-                key: `${RedisKeys.OTP}:${account.email}`,
-                value: otp,
-                ttl: RedisTTL.OTP
-            })
+            const otp = await this.otpService.store(account.email);
             await this.emailQueueService.sendSignUpEmail(account.email, otp);
             await session.commitTransaction()
             return {
@@ -124,19 +91,21 @@ export class AuthWebService implements IAuthWebService {
     }
 
     async verifyOTP(verifyOTPRequestDto: VerifyOTPRequestDto, accountPayload: AccountPayload): Promise<VerifyOTPResponseDto> {
-        const otp = await this.cacheService.get<string>(`${RedisKeys.OTP}:${accountPayload.email}`)
-        if (!otp) throw this.AuthWebServiceError.error(ClientSideErrorCode.AUTH.EXPIRED_OTP_TOKEN)
-        if(otp.toString() !== verifyOTPRequestDto.otp) throw this.AuthWebServiceError.error(ClientSideErrorCode.AUTH.INVALID_OTP)
+        const storedOtp = await this.otpService.get(accountPayload.email);
+        if (!storedOtp) throw this.AuthWebServiceError.error(ClientSideErrorCode.AUTH.EXPIRED_OTP_TOKEN)
+        
+        const isValid = await this.otpService.verify(accountPayload.email, verifyOTPRequestDto.otp);
+        if (!isValid) throw this.AuthWebServiceError.error(ClientSideErrorCode.AUTH.INVALID_OTP)
         
         await this.accountService.update(accountPayload.id, { isVerified: true })
-        await this.cacheService.delete([`${RedisKeys.OTP}:${accountPayload.email}`])
+        await this.otpService.delete(accountPayload.email);
         
         const newTokenPayload: AccountPayload = {
             ...accountPayload,
             isVerified: true,
             isActive: true
         };
-        const token = await this.generateAndCacheToken(newTokenPayload);
+        const token = await this.tokenService.generateAndCache(newTokenPayload);
         
         return { token };
     }
@@ -144,12 +113,7 @@ export class AuthWebService implements IAuthWebService {
     async resendOTP(email: string): Promise<void> {
         const account = await this.accountService.findByEmail(email)
         if(account.isVerified) throw this.AuthWebServiceError.error(ClientSideErrorCode.AUTH.ACCOUNT_ALREADY_VERIFIED)
-        const otp = generateOTP()
-        await this.cacheService.set({
-            key: `${RedisKeys.OTP}:${email}`,
-            value: otp,
-            ttl: RedisTTL.OTP
-        })
+        const otp = await this.otpService.store(email);
         await this.emailQueueService.sendSignUpEmail(email, otp);
     }
 
@@ -183,6 +147,6 @@ export class AuthWebService implements IAuthWebService {
     }
 
     async logout(account: AccountPayload): Promise<void> {
-        await this.cacheService.delete([`${account.id}`]);
+        await this.tokenService.invalidate(account.id);
     }
 }

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { EnvironmentService } from "@Infrastructure/config";
 import { AppError } from "@Package/error";
@@ -8,14 +8,18 @@ import { ClientSideErrorCode } from '@Common/error';
 
 @Injectable()
 export class MailService {
-
-    private readonly emailTemplateService: EmailTemplateService = new EmailTemplateService();
+    private readonly logger = new Logger(MailService.name);
     private transporter: nodemailer.Transporter;
-    constructor(private readonly env: EnvironmentService) {
-        const host = this.env.get("mail.host")
-        const port = this.env.get("mail.port")
-        const user = this.env.get("mail.user") 
-        const pass = this.env.get("mail.password")
+
+    constructor(
+        private readonly env: EnvironmentService,
+        private readonly emailTemplateService: EmailTemplateService,
+    ) {
+        const host = this.env.get("mail.host");
+        const port = this.env.get("mail.port");
+        const user = this.env.get("mail.user");
+        const pass = this.env.get("mail.password");
+        
         this.transporter = nodemailer.createTransport({
             host: host,
             port: Number(port),
@@ -30,10 +34,11 @@ export class MailService {
         });
     }
 
-    async sendMail(to: string, subject: string, html: string) {
+    async sendMail(to: string, subject: string, html: string): Promise<nodemailer.SentMessageInfo> {
         try {
+            const fromEmail = this.env.get("mail.from");
             const mailOptions = {
-                from: `"${process.env.MAIL_FROM_NAME}" <${process.env.MAIL_USER}>`,
+                from: fromEmail,
                 to,
                 subject,
                 html,
@@ -41,21 +46,21 @@ export class MailService {
 
             return await this.transporter.sendMail(mailOptions);
         } catch (e) {
-            console.log("error in send email", e)
+            this.logger.error("Error sending email", e);
             throw new AppError({
                 code: ClientSideErrorCode.MAIL.MAIL_ERROR.code,
-                message: `error in send email : ${e.message}`
-            })
+                message: `Error sending email: ${e.message}`
+            });
         }
     }
 
-    async sendSingInOTP(to: string, otp?: string) {
+    async sendSingInOTP(to: string, otp?: string): Promise<nodemailer.SentMessageInfo> {
         const userOtp = otp ?? generateOTP();
         const html = await this.emailTemplateService.getSigninTemplate(userOtp);
         return await this.sendMail(to, "OTP for verification", html);
     }
 
-    async sendForgotPasswordEmail(to: string, url: string) {
+    async sendForgotPasswordEmail(to: string, url: string): Promise<nodemailer.SentMessageInfo> {
         const html = await this.emailTemplateService.getForgotPasswordTemplate(url);
         return await this.sendMail(to, "Reset Your Password", html);
     }

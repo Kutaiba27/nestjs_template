@@ -1,14 +1,20 @@
-import * as bcrypt from "bcryptjs"
+import { Injectable } from "@nestjs/common";
+import * as bcrypt from "bcryptjs";
 
-const Salt = 10
+const SALT_ROUNDS = 10;
 
-export class HashService {
+export abstract class IHashService {
+    abstract hashPassword(data: string): Promise<string>;
+    abstract comparePassword(plainPassword: string, hashedPassword: string): Promise<boolean>;
+}
 
-  public static async hashPassword(data: string){
-    return await bcrypt.hash(data,Salt)
-  }
+@Injectable()
+export class HashService implements IHashService {
+    async hashPassword(data: string): Promise<string> {
+        return bcrypt.hash(data, SALT_ROUNDS);
+    }
 
-  public static async comparePassword(plainPassword: string, hashedPassword: string) {
-    return await bcrypt.compare(plainPassword, hashedPassword)
-  }
+    async comparePassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
+        return bcrypt.compare(plainPassword, hashedPassword);
+    }
 }
