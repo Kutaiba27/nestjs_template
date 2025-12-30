@@ -10,7 +10,7 @@ export type AccountDocument = Account & Document;
 })
 export class Account extends IBaseEntity{
 
-    @Prop({ type: String, unique: true, required: true, sparse: true, index: true })
+    @Prop({ type: String, unique: true, required: true, sparse: true })
     email: string;
     @Prop({ type: String, required: false, sparse: true })
     firstName?: string;
@@ -27,5 +27,3 @@ export class Account extends IBaseEntity{
 }
 
 export const AccountSchema = SchemaFactory.createForClass(Account);
-
-AccountSchema.index({ email: 1 }, { unique: true });

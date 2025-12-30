@@ -1,6 +1,6 @@
 services:
   app:
-    container_name: apostrophe-task_development
+    container_name: nestJs-template-task_development
     build:
       context: .
       target: development
@@ -16,5 +16,5 @@ services:
       mongodb:
         condition: service_healthy
     networks:
-      - apostrophe-task
+      - nestJs-template-task
 

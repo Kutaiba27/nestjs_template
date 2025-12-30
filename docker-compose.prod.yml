@@ -1,6 +1,6 @@
 services:
   app:
-    container_name: apostrophe-task_production
+    container_name: nestJs-template-task_production
     build:
       context: .
       target: production
@@ -15,7 +15,7 @@ services:
       mongodb:
         condition: service_healthy
     networks:
-      - apostrophe-task
+      - nestJs-template-task
 
   # Override MongoDB with authentication for production
   mongodb:

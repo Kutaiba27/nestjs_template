@@ -1,5 +1,5 @@
 {
-  "name": "apostrophe-task",
+  "name": "nestJs-template-task",
   "version": "0.0.1",
   "description": "",
   "author": "",
@@ -105,16 +105,23 @@
       "json",
       "ts"
     ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
+    "rootDir": ".",
+    "testRegex": "test/unit/.*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "src/**/*.(t|j)s"
     ],
-    "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "coverageDirectory": "coverage",
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^@Modules/(.*)$": "<rootDir>/src/modules/$1",
+      "^@Package/(.*)$": "<rootDir>/src/package/$1",
+      "^@Common/(.*)$": "<rootDir>/src/common/$1",
+      "^@Infrastructure/(.*)$": "<rootDir>/src/infrastructure/$1",
+      "^uuid$": "<rootDir>/test/mocks/uuid.ts"
+    }
   },
   "node": ">=22.13.1",
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"

@@ -1,6 +1,6 @@
 services:
   app:
-    container_name: apostrophe-task_app_staging
+    container_name: nestJs-template-task_app_staging
     build:
       context: .
       target: staging
@@ -15,7 +15,7 @@ services:
       mongodb:
         condition: service_healthy
     networks:
-      - apostrophe-task
+      - nestJs-template-task
 
   mongodb:
     env_file:

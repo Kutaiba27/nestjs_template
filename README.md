@@ -1,4 +1,4 @@
-## Apostrophe Assignment
+## NestJs-Template Assignment
 
 NestJS-based backend service that provides authentication (web & admin), account management, email/OTP flows, and infrastructure pieces like MongoDB, Redis cache, queues, and Swagger API documentation. It is designed to run locally or inside Docker using the provided compose files.
 

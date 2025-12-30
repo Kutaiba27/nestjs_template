@@ -1,5 +1,5 @@
 import { applyDecorators, Controller, UseGuards, UseInterceptors, ValidationPipe, UsePipes } from '@nestjs/common';
-import { JwtAuthGuard } from 'src/package/auth';
+import { JwtAuthGuard } from '@Package/auth';
 import { PathPrefixEnum } from '../enum';
 import { ValidationPipeDecorator } from './validation-pipe.decorator';
 import { ApiBearerAuth, ApiHeader, ApiHeaders, ApiTags } from '@nestjs/swagger';
